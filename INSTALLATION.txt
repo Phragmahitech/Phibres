@@ -1,0 +1,100 @@
+Phibres by Phragma - installation
+=================================
+
+macOS (Apple Silicon et Intel, macOS 10.13 ou plus recent)
+----------------------------------------------------------
+1. Copie "Phibres.vst3" dans :
+       /Library/Audio/Plug-Ins/VST3/
+   (Finder > menu Aller > Aller au dossier... > colle ce chemin)
+   Ne garde qu'UNE copie du plugin : s'il en reste une autre dans
+   ~/Library/Audio/Plug-Ins/VST3/, le DAW peut charger l'ancienne version.
+
+2. Le plugin n'est pas notarise par Apple : macOS le bloque tant que tu n'as pas
+   retire le marqueur de telechargement. Ouvre l'app Terminal et lance :
+
+       xattr -dr com.apple.quarantine /Library/Audio/Plug-Ins/VST3/Phibres.vst3
+
+3. Relance ton DAW et rescanne les plugins.
+   Ableton Live : Reglages > Plug-Ins > active "Utiliser les dossiers systeme VST3", puis "Rescanner".
+
+
+Windows (64 bits)
+-----------------
+1. Copie le DOSSIER "Phibres.vst3" en entier dans :
+       C:\Program Files\Common Files\VST3\
+
+2. Relance ton DAW et rescanne les plugins.
+   Aucune installation supplementaire n'est necessaire.
+
+
+Utilisation
+-----------
+Phibres se pose en insert. Quand tu allumes STRETCH, il enregistre le son qui
+passe et le rejoue etire : une tete de lecture avance lentement dans la capture
+et lance des grains qui, eux, gardent la hauteur d'origine (ou celle de PITCH).
+Eteint, le son passe intact.
+
+Cinq modules, de gauche a droite.
+
+CAPTURE
+  STRETCH      Allume : capture a partir de cet instant et joue le son etire.
+               Eteint : retour au signal direct.
+  LENGTH       Longueur de la boucle que la tete parcourt. Tourner a droite
+               raccourcit. SYNC : 8/1 (8 mesures) a 1/32. FREE : 30 s a 20 ms.
+  Bande        La capture, ce qui reste a enregistrer (pointille) et la tete.
+  POSITION     Decale la tete dans la boucle. Tete gelee, c'est lui qui la
+               promene (a automatiser pour parcourir le son a la main).
+  AUTO / EVERY Recapture automatique, a l'intervalle EVERY (16/1 a 1/16),
+               compte depuis la derniere capture.
+  GRAB         Recapture tout de suite. Une note MIDI envoyee au plugin fait
+               la meme chose, a l'echantillon pres.
+
+STRETCH
+  FACTOR       En FREE : facteur d'etirement, de x1 a x1000.
+  OVER         En SYNC : duree sur laquelle la boucle est etalee (1/4 a 64/1).
+               Exemple : LENGTH 1/4, OVER 4/1 = un temps etire sur 4 mesures.
+  FREEZE       Arrete la tete : le son se fige la ou elle se trouve.
+  Afficheur    Duree de la boucle > duree une fois etiree.
+  PITCH        Hauteur des grains, de -24 a +24 demi-tons, sans changer la
+               vitesse. SEMI : par demi-tons. FREE : au centieme.
+  REVERSE      La tete recule dans la boucle.
+
+GRAIN
+  RATE         Intervalle entre deux departs de grain. FREE : 1 s a 1 ms.
+               SYNC : 1/1 a 1/128, cale sur la grille du projet quand il joue.
+               NOTE : accorde sur une note (C-1 a C5, noms d'Ableton Live) ;
+               l'afficheur donne la frequence.
+               Quand les grains partent vite, on entend une note a cette
+               cadence : a 200 BPM, 1/128 = 107 Hz.
+  FLIP         Chaque grain est lu a l'envers (la tete, elle, garde son sens).
+  SIZE         Duree d'un grain, en % de l'intervalle. 200 % = recouvrement de
+               moitie (lisse). Moins de 100 % = des trous entre les grains.
+  SHAPE        Fenetre du grain : 0 % = bords francs (son rapeux, riche en
+               harmoniques), 100 % = cloche (doux).
+  TILT         Penche la fenetre : a gauche, attaque franche et longue retombee ;
+               a droite, montee lente et fin franche.
+  Afficheur    Les grains (traits fins) et leur somme (courbe pleine).
+
+SCATTER        Tire au sort, pour chaque grain :
+  SPRAY        un ecart de position, jusqu'a 1 s de part et d'autre de la tete ;
+  DETUNE       un ecart de hauteur, jusqu'a 24 demi-tons. FINE : continu,
+               SEMI : par demi-tons, OCT : par octaves ;
+  FLIP         la probabilite que le grain soit lu dans l'autre sens ;
+  WIDTH        sa place dans la stereo.
+  Le bouton SCATTER allume ou eteint les quatre d'un coup.
+
+FILTER         Filtre resonant sur tout le son, en fin de chaine.
+  CUTOFF       Frequence, de 20 Hz a 20 kHz.
+  HP / BP / LP Passe-haut, passe-bande, passe-bas.
+  12 / 24 dB   Pente par octave.
+  RESO         Resonance.
+  MIX          Dry / wet sur tout le plugin.
+  LIMITER      Limiteur de securite a 0 dBFS (allume par defaut), actif que le
+               filtre soit allume ou non.
+
+FREE / SYNC    En FREE, clic sur la valeur pour la saisir au clavier (pareil
+               pour la note, le spray et la frequence du filtre).
+T / D          En SYNC : triolet ou pointe.
+
+La capture en cours est enregistree avec le projet : a la reouverture, STRETCH
+allume, le plugin reprend sur le meme son.

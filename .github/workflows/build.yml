@@ -1,0 +1,86 @@
+name: Build VST3
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  VST3_PATH: build/Phibres_artefacts/Release/VST3/Phibres.vst3
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-latest
+          - name: Windows
+            os: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DPHIBRES_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --config Release --target Phibres_VST3 PhibresEngineTests --parallel 4
+
+      - name: Test du moteur audio
+        run: ctest --test-dir build -C Release -R engine --output-on-failure
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          lipo -archs "$VST3_PATH/Contents/MacOS/Phibres"
+          codesign --force --deep --sign - "$VST3_PATH"
+          codesign --verify --deep --strict "$VST3_PATH"
+          mkdir dist
+          cp -R "$VST3_PATH" dist/
+          cp INSTALLATION.txt dist/
+          (cd dist && zip -r -q ../Phibres-macOS.zip .)
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          mkdir dist
+          cp -R "$VST3_PATH" dist/
+          cp INSTALLATION.txt dist/
+          (cd dist && 7z a -tzip ../Phibres-Windows.zip . > /dev/null)
+
+      - name: Upload
+        uses: actions/upload-artifact@v7
+        with:
+          path: Phibres-${{ matrix.name }}.zip
+          archive: false
+          if-no-files-found: error
+
+      - name: Validation pluginval
+        run: |
+          curl -sSfL -o pluginval.zip "https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_${{ runner.os }}.zip"
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            unzip -q -o pluginval.zip
+            PLUGINVAL="pluginval.app/Contents/MacOS/pluginval"
+          else
+            7z x -y pluginval.zip > /dev/null
+            PLUGINVAL="./pluginval.exe"
+          fi
+          "$PLUGINVAL" --strictness-level 10 --validate-in-process --validate "$VST3_PATH"
