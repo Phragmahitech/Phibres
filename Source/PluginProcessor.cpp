@@ -355,8 +355,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout PhibresAudioProcessor::creat
 PhibresAudioProcessor::PhibresAudioProcessor()
     : AudioProcessor (BusesProperties().withInput ("Input", juce::AudioChannelSet::stereo(), true)
                                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
-      apvts (*this, nullptr, "Phibres", createParameterLayout())
+      apvts (*this, nullptr, "Phibres", createParameterLayout()),
+      presets (apvts, "Phibres", ".phbpreset", PresetLibrary::defaultsOnly (*this, { "grab" }), { "grab" }, "UNTITLED")
 {
+    presets.restoreFromState();   // projet neuf : DEFAULT
     const auto raw = [this] (const char* id) { return apvts.getRawParameterValue (id); };
 
     stretchParam         = raw (stretchId);
@@ -885,6 +887,7 @@ void PhibresAudioProcessor::setStateInformation (const void* data, int sizeInByt
         return;
 
     apvts.replaceState (juce::ValueTree::fromXml (*xml));
+    presets.restoreFromState();
 
     const juce::SpinLock::ScopedLockType lock (tapeLock);
     tapeReady.store (false, std::memory_order_release);

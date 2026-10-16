@@ -713,8 +713,9 @@ void TapeDisplay::paint (juce::Graphics& g)
 }
 
 //==============================================================================
-PhibresAudioProcessorEditor::PhibresAudioProcessorEditor (PhibresAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p), tapeDisplay (p)
+PhibresFacade::PhibresFacade (PhibresAudioProcessor& p)
+    : audioProcessor (p), tapeDisplay (p),
+      presetBar (p.presets, [this] (float size, bool bold, float tracking) { return lookAndFeel.font (size, bold, tracking); })
 {
     setLookAndFeel (&lookAndFeel);
 
@@ -844,16 +845,21 @@ PhibresAudioProcessorEditor::PhibresAudioProcessorEditor (PhibresAudioProcessor&
         feel->attachment->sendInitialUpdate();
 
     setSize (editorWidth, editorHeight);
+
+    // Presets et taille de la fenêtre, dans l'en-tête, à gauche du numéro de version
+    addAndMakeVisible (presetBar);
+    presetBar.setBounds (editorWidth - 112 - phragma::PresetBar::idealWidth, 26, phragma::PresetBar::idealWidth, 28);
+    presetBar.attachSavePanelTo (*this);
     startTimerHz (15);
 }
 
-PhibresAudioProcessorEditor::~PhibresAudioProcessorEditor()
+PhibresFacade::~PhibresFacade()
 {
     stopTimer();
     setLookAndFeel (nullptr);
 }
 
-void PhibresAudioProcessorEditor::configureMainKnob (juce::Slider& knob, const char* parameterId, int column)
+void PhibresFacade::configureMainKnob (juce::Slider& knob, const char* parameterId, int column)
 {
     addChildComponent (knob);
     knob.setComponentID (parameterId);
@@ -867,7 +873,7 @@ void PhibresAudioProcessorEditor::configureMainKnob (juce::Slider& knob, const c
     sliderAttachments.push_back (std::make_unique<APVTS::SliderAttachment> (audioProcessor.apvts, parameterId, knob));
 }
 
-void PhibresAudioProcessorEditor::configureMiniKnob (juce::Slider& knob, const char* parameterId, const char* name, int column, int slot, int numSlots)
+void PhibresFacade::configureMiniKnob (juce::Slider& knob, const char* parameterId, const char* name, int column, int slot, int numSlots)
 {
     addAndMakeVisible (knob);
     knob.setName (name);
@@ -883,7 +889,7 @@ void PhibresAudioProcessorEditor::configureMiniKnob (juce::Slider& knob, const c
     sliderAttachments.push_back (std::make_unique<APVTS::SliderAttachment> (audioProcessor.apvts, parameterId, knob));
 }
 
-void PhibresAudioProcessorEditor::configureValueLabel (juce::Label& label, int column)
+void PhibresFacade::configureValueLabel (juce::Label& label, int column)
 {
     addAndMakeVisible (label);
     label.setComponentID ("value/" + juce::String (column));
@@ -900,7 +906,7 @@ void PhibresAudioProcessorEditor::configureValueLabel (juce::Label& label, int c
     };
 }
 
-void PhibresAudioProcessorEditor::configureBigToggle (juce::TextButton& button, const char* parameterId, int column,
+void PhibresFacade::configureBigToggle (juce::TextButton& button, const char* parameterId, int column,
                                                       std::function<void (bool)> onChange)
 {
     addAndMakeVisible (button);
@@ -921,7 +927,7 @@ void PhibresAudioProcessorEditor::configureBigToggle (juce::TextButton& button, 
                                                                           }));
 }
 
-void PhibresAudioProcessorEditor::configureSmallToggle (juce::TextButton& button, const char* parameterId, juce::Rectangle<int> area)
+void PhibresFacade::configureSmallToggle (juce::TextButton& button, const char* parameterId, juce::Rectangle<int> area)
 {
     addAndMakeVisible (button);
     button.setComponentID (parameterId);
@@ -934,7 +940,7 @@ void PhibresAudioProcessorEditor::configureSmallToggle (juce::TextButton& button
     buttonAttachments.push_back (std::make_unique<APVTS::ButtonAttachment> (audioProcessor.apvts, parameterId, button));
 }
 
-void PhibresAudioProcessorEditor::configureSwitch (ChoiceSwitch& selector, const char* parameterId, const juce::StringArray& texts,
+void PhibresFacade::configureSwitch (ChoiceSwitch& selector, const char* parameterId, const juce::StringArray& texts,
                                                    juce::Rectangle<int> area, bool tiny, std::function<void (int)> onChange)
 {
     const int count = texts.size();
@@ -976,7 +982,7 @@ void PhibresAudioProcessorEditor::configureSwitch (ChoiceSwitch& selector, const
         selector.buttons.getUnchecked (i)->onClick = [attachment, i] { attachment->setValueAsCompleteGesture ((float) i); };
 }
 
-void PhibresAudioProcessorEditor::configureFeel (FeelSwitch& feel, const char* parameterId, int column)
+void PhibresFacade::configureFeel (FeelSwitch& feel, const char* parameterId, int column)
 {
     for (auto* button : { &feel.triplet, &feel.dotted })
     {
@@ -1010,7 +1016,7 @@ void PhibresAudioProcessorEditor::configureFeel (FeelSwitch& feel, const char* p
     feel.dotted.onClick = [state] { state->attachment->setValueAsCompleteGesture (state->value == 2 ? 0.0f : 2.0f); };
 }
 
-juce::Slider& PhibresAudioProcessorEditor::activeKnob (int column)
+juce::Slider& PhibresFacade::activeKnob (int column)
 {
     using Ids = PhibresAudioProcessor;
 
@@ -1024,13 +1030,13 @@ juce::Slider& PhibresAudioProcessorEditor::activeKnob (int column)
     }
 }
 
-bool PhibresAudioProcessorEditor::isSynced (int column) const
+bool PhibresFacade::isSynced (int column) const
 {
     using Ids = PhibresAudioProcessor;
     return column == 0 ? lengthMode == Ids::modeSync : column == 1 ? stretchMode == Ids::modeSync : column == 2 && grainMode == Ids::modeSync;
 }
 
-void PhibresAudioProcessorEditor::setStandby (int column, bool standby)
+void PhibresFacade::setStandby (int column, bool standby)
 {
     // Module sans effet pour l'instant : son potard passe en veille (il reste réglable) et sa valeur s'estompe.
     for (auto* knob : { &stretchFactorKnob, &stretchDivisionKnob, &sprayKnob, &cutoffKnob })
@@ -1040,7 +1046,7 @@ void PhibresAudioProcessorEditor::setStandby (int column, bool standby)
     valueLabels[column].setColour (juce::Label::textColourId, standby ? LF::dimInk() : LF::ink());
 }
 
-void PhibresAudioProcessorEditor::modesChanged()
+void PhibresFacade::modesChanged()
 {
     using Ids = PhibresAudioProcessor;
 
@@ -1069,7 +1075,7 @@ void PhibresAudioProcessorEditor::modesChanged()
     repaint();
 }
 
-void PhibresAudioProcessorEditor::updateValueLabels()
+void PhibresFacade::updateValueLabels()
 {
     const FeelSwitch* const feels[] = { &lengthFeel, &stretchFeel, &grainFeel };
 
@@ -1085,7 +1091,7 @@ void PhibresAudioProcessorEditor::updateValueLabels()
     }
 }
 
-void PhibresAudioProcessorEditor::timerCallback()
+void PhibresFacade::timerCallback()
 {
     // Durées affichées dans le panneau PLAYBACK : elles suivent le tempo de l'hôte.
     const float loopSeconds = audioProcessor.getLoopSeconds(), passSeconds = audioProcessor.getPassSeconds();
@@ -1098,14 +1104,14 @@ void PhibresAudioProcessorEditor::timerCallback()
     }
 }
 
-void PhibresAudioProcessorEditor::resized() {}
+void PhibresFacade::resized() {}
 
 //==============================================================================
-void PhibresAudioProcessorEditor::paint (juce::Graphics& g)
+void PhibresFacade::paint (juce::Graphics& g)
 {
     // Le fond (plaques, ombres, textes fixes) est coûteux à dessiner : on le garde en image,
     // à la résolution réelle de l'écran, et on ne redessine à chaque fois que ce qui bouge.
-    const float scale = juce::jlimit (1.0f, 4.0f, (float) g.getInternalContext().getPhysicalPixelScaleFactor());
+    const float scale = juce::jlimit (0.5f, 4.0f, (float) g.getInternalContext().getPhysicalPixelScaleFactor());
 
     if (! background.isValid() || std::abs (scale - backgroundScale) > 0.01f)
     {
@@ -1124,7 +1130,7 @@ void PhibresAudioProcessorEditor::paint (juce::Graphics& g)
     paintModules (g);
 }
 
-void PhibresAudioProcessorEditor::paintBackground (juce::Graphics& g)
+void PhibresFacade::paintBackground (juce::Graphics& g)
 {
     const auto full = juce::Rectangle<float> (0.0f, 0.0f, (float) editorWidth, (float) editorHeight);
     const float w = (float) editorWidth, mid = w * 0.5f;
@@ -1247,7 +1253,7 @@ void PhibresAudioProcessorEditor::paintBackground (juce::Graphics& g)
                 juce::Justification::centredRight, false);
 }
 
-void PhibresAudioProcessorEditor::paintLights (juce::Graphics& g)
+void PhibresFacade::paintLights (juce::Graphics& g)
 {
     const bool moduleOn[numColumns] = { stretchOn, freezeOn, flipOn, scatterOn, filterOn };
     const float pipY = (float) footerY + 11.0f;
@@ -1322,7 +1328,7 @@ void PhibresAudioProcessorEditor::paintLights (juce::Graphics& g)
     }
 }
 
-void PhibresAudioProcessorEditor::paintModules (juce::Graphics& g)
+void PhibresFacade::paintModules (juce::Graphics& g)
 {
     using Ids = PhibresAudioProcessor;
 
@@ -1513,4 +1519,45 @@ void PhibresAudioProcessorEditor::paintModules (juce::Graphics& g)
                     juce::Rectangle<int> (70, 12).withCentre ({ knob->getBounds().getCentreX(), knob->getBottom() + 20 }),
                     juce::Justification::centred, false);
     }
+}
+
+//==============================================================================
+PhibresAudioProcessorEditor::PhibresAudioProcessorEditor (PhibresAudioProcessor& p)
+    : AudioProcessorEditor (&p), audioProcessor (p), facade (p)
+{
+    addAndMakeVisible (facade);
+
+    // Taille gardée avec le projet (lue avant de régler les limites : les régler redimensionne déjà la fenêtre).
+    const int savedWidth = (int) audioProcessor.apvts.state.getProperty ("editorWidth", PhibresFacade::width);
+
+    // Fenêtre redimensionnable de 60 % à 150 %, proportions gardées (coin en bas à droite ou menu de taille).
+    setResizable (true, true);
+    setResizeLimits (juce::roundToInt (PhibresFacade::width * 0.6), juce::roundToInt (PhibresFacade::height * 0.6),
+                     juce::roundToInt (PhibresFacade::width * 1.5), juce::roundToInt (PhibresFacade::height * 1.5));
+    getConstrainer()->setFixedAspectRatio ((double) PhibresFacade::width / (double) PhibresFacade::height);
+
+    facade.getPresetBar().getScale = [this] { return getUiScale(); };
+    facade.getPresetBar().setScale = [this] (float scale) { setUiScale (scale); };
+
+    const int shownWidth = juce::jlimit (juce::roundToInt (PhibresFacade::width * 0.6), juce::roundToInt (PhibresFacade::width * 1.5), savedWidth);
+    setSize (shownWidth, juce::roundToInt ((double) shownWidth * PhibresFacade::height / PhibresFacade::width));
+    sized = true;
+    resized();
+}
+
+PhibresAudioProcessorEditor::~PhibresAudioProcessorEditor() = default;
+
+void PhibresAudioProcessorEditor::setUiScale (float scale)
+{
+    scale = juce::jlimit (0.6f, 1.5f, scale);
+    setSize (juce::roundToInt ((float) PhibresFacade::width * scale), juce::roundToInt ((float) PhibresFacade::height * scale));
+}
+
+void PhibresAudioProcessorEditor::resized()
+{
+    facade.setTransform (juce::AffineTransform::scale (getUiScale()));
+    facade.getPresetBar().refresh();
+
+    if (sized)
+        audioProcessor.apvts.state.setProperty ("editorWidth", getWidth(), nullptr);
 }

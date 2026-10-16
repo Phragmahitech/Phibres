@@ -39,6 +39,21 @@ Phibres se pose en insert. Quand STRETCH s'allume, il enregistre l'entrée sur u
 
 39 paramètres, tous automatisables. Mono et stéréo.
 
+## Presets et taille de la fenêtre
+
+En haut de la façade : `‹  NOM ▾  ›  SAVE  100 %`.
+
+- **‹ ›** : preset précédent / suivant (DEFAULT, puis les presets enregistrés, par ordre alphabétique, en boucle).
+- **Nom** : menu des presets, SAVE AS…, DELETE (le fichier part à la corbeille), SHOW PRESETS FOLDER. Une étoile `*` signale un preset modifié.
+- **SAVE** : panneau dans la façade ; Entrée = enregistrer, Échap = annuler. Si le nom existe, le bouton devient REPLACE.
+- **100 %** : taille de la fenêtre (60, 75, 100, 125, 150 %). On peut aussi tirer le coin en bas à droite. La taille est gardée avec le projet.
+
+Les presets sont des fichiers `.phbpreset` (XML, valeurs en unités réelles) :
+- macOS : `~/Library/Audio/Presets/Phragma/Phibres/`
+- Windows : `%APPDATA%\Phragma\Phibres\Presets\`
+
+Un preset garde tous les paramètres sauf GRAB (touche momentanée) ; la capture audio n'est pas dans le preset (elle reste dans le projet). Le projet du DAW garde le nom du preset en cours. Un paramètre absent du fichier revient à sa valeur par défaut ; une valeur hors plage est bornée ; un fichier illisible est refusé sans rien changer.
+
 ## Ce qu'il faut savoir
 
 - **Le son des grains.** C'est un granulaire brut, sans alignement de phase : plusieurs grains qui se recouvrent lisent le même son à des instants différents, ce qui le colore d'un peigne à la cadence des grains. Sur un son étiré, les partiels se rangent sur une grille espacée de la cadence des grains : avec un intervalle court, on entend une note. À 200 BPM, 1/128 donne 107 Hz. Le mode NOTE sert à choisir cette note.

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PluginProcessor.h"
+#include "PresetBar.h"
 
 /**
     Design clair, celui de Phragments : plaques à pans coupés, gris clair et
@@ -122,12 +123,16 @@ private:
     Chacun a son grand potard, son afficheur, ses interrupteurs, son grand
     bouton et un panneau de réglages en dessous.
 */
-class PhibresAudioProcessorEditor final : public juce::AudioProcessorEditor,
+class PhibresFacade final : public juce::Component,
                                           private juce::Timer
 {
 public:
-    explicit PhibresAudioProcessorEditor (PhibresAudioProcessor&);
-    ~PhibresAudioProcessorEditor() override;
+    static constexpr int width = 1218, height = 642;
+
+    explicit PhibresFacade (PhibresAudioProcessor&);
+    ~PhibresFacade() override;
+
+    phragma::PresetBar& getPresetBar() noexcept     { return presetBar; }
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -200,6 +205,33 @@ private:
     std::vector<std::unique_ptr<APVTS::ButtonAttachment>> buttonAttachments;
     std::vector<std::unique_ptr<juce::ParameterAttachment>> stateWatchers;
     std::unique_ptr<juce::ParameterAttachment> pitchAttachment, grabAttachment;
+
+    // Barre des presets et de la taille (en-tête) : déclarée en dernier, détruite en premier.
+    phragma::PresetBar presetBar;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PhibresFacade)
+};
+
+//==============================================================================
+/** L'éditeur : la façade, mise à l'échelle de la fenêtre (redimensionnable de 60 à 150 %, proportions gardées). */
+class PhibresAudioProcessorEditor final : public juce::AudioProcessorEditor
+{
+public:
+    explicit PhibresAudioProcessorEditor (PhibresAudioProcessor&);
+    ~PhibresAudioProcessorEditor() override;
+
+    void resized() override;
+
+    PhibresFacade& getFacade() noexcept                 { return facade; }
+
+    /** Taille de la fenêtre (1 = 100 %). */
+    float getUiScale() const                  { return (float) getWidth() / (float) PhibresFacade::width; }
+    void setUiScale (float scale);
+
+private:
+    PhibresAudioProcessor& audioProcessor;
+    PhibresFacade facade;
+    bool sized = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PhibresAudioProcessorEditor)
 };

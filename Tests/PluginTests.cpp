@@ -738,6 +738,9 @@ static void testEditor (const juce::File& outputDir)
     if (editor == nullptr)
         return;
 
+    // Les contrôles sont dans la façade, mise à l'échelle par l'éditeur
+    juce::Component* ui = &dynamic_cast<PhibresAudioProcessorEditor&> (*editor).getFacade();
+
     auto snapshot = [&] (const juce::String& name)
     {
         juce::MessageManager::getInstance()->runDispatchLoopUntil (120);
@@ -754,14 +757,14 @@ static void testEditor (const juce::File& outputDir)
 
     check (editor->getWidth() == 1218 && editor->getHeight() == 642, "taille d'interface : " + juce::String (editor->getWidth()) + " x " + juce::String (editor->getHeight()));
 
-    const auto knob = [&editor] (const char* id) { return dynamic_cast<juce::Slider*> (editor->findChildWithID (id)); };
-    const auto button = [&editor] (const juce::String& id) { return dynamic_cast<juce::TextButton*> (editor->findChildWithID (id)); };
+    const auto knob = [&ui] (const char* id) { return dynamic_cast<juce::Slider*> (ui->findChildWithID (id)); };
+    const auto button = [&ui] (const juce::String& id) { return dynamic_cast<juce::TextButton*> (ui->findChildWithID (id)); };
 
-    const auto readouts = [&editor]
+    const auto readouts = [&ui]
     {
         juce::StringArray texts;
         for (int column = 0; column < 5; ++column)
-            if (auto* label = dynamic_cast<juce::Label*> (editor->findChildWithID ("value/" + juce::String (column))))
+            if (auto* label = dynamic_cast<juce::Label*> (ui->findChildWithID ("value/" + juce::String (column))))
                 texts.add (label->getText());
         return texts.joinIntoString (" | ");
     };
@@ -787,7 +790,7 @@ static void testEditor (const juce::File& outputDir)
     for (const char* id : { Ids::stretchId, Ids::freezeId, Ids::flipId, Ids::scatterId, Ids::filterId, Ids::autoCaptureId, Ids::grabId, Ids::reverseId, Ids::limiterId })
         allFound = allFound && button (id) != nullptr;
 
-    auto* tape = dynamic_cast<TapeDisplay*> (editor->findChildWithID ("tape"));
+    auto* tape = dynamic_cast<TapeDisplay*> (ui->findChildWithID ("tape"));
     allFound = allFound && tape != nullptr;
     check (allFound, "controles introuvables dans l'interface");
 
@@ -797,12 +800,12 @@ static void testEditor (const juce::File& outputDir)
 
         // Tous les contrôles tiennent dans la façade et aucun ne chevauche un autre (hors potards superposés d'un même module).
         juce::Array<juce::Component*> controls;
-        for (auto* child : editor->getChildren())
+        for (auto* child : ui->getChildren())
             if (child->isVisible())
                 controls.add (child);
 
         for (auto* control : controls)
-            check (editor->getLocalBounds().reduced (12).contains (control->getBounds()), "controle hors de la facade : " + control->getComponentID());
+            check (ui->getLocalBounds().reduced (12).contains (control->getBounds()), "controle hors de la facade : " + control->getComponentID());
 
         for (int i = 0; i < controls.size(); ++i)
             for (int j = i + 1; j < controls.size(); ++j)
@@ -890,7 +893,7 @@ static void testEditor (const juce::File& outputDir)
         check (! button (juce::String (Ids::grainFeelId) + "/1")->isEnabled() && button (juce::String (Ids::lengthFeelId) + "/1")->isEnabled(),
                "triolet / pointe : hors service hors du mode sync seulement");
 
-        if (auto* label = dynamic_cast<juce::Label*> (editor->findChildWithID ("value/2")))
+        if (auto* label = dynamic_cast<juce::Label*> (ui->findChildWithID ("value/2")))
             label->setText ("F#1", juce::sendNotificationSync);
 
         check (textOf (*p, Ids::grainNoteId) == "F#1", "saisie d'une note : " + textOf (*p, Ids::grainNoteId));
@@ -931,11 +934,11 @@ static void testEditor (const juce::File& outputDir)
         check (position > 0.3 && position < 0.5, "position du potard de longueur : " + juce::String (position));
 
         // Saisie au clavier dans les afficheurs
-        if (auto* label = dynamic_cast<juce::Label*> (editor->findChildWithID ("value/4")))
+        if (auto* label = dynamic_cast<juce::Label*> (ui->findChildWithID ("value/4")))
             label->setText ("800", juce::sendNotificationSync);
-        if (auto* label = dynamic_cast<juce::Label*> (editor->findChildWithID ("value/1")))
+        if (auto* label = dynamic_cast<juce::Label*> (ui->findChildWithID ("value/1")))
             label->setText ("16", juce::sendNotificationSync);
-        if (auto* label = dynamic_cast<juce::Label*> (editor->findChildWithID ("value/0")))
+        if (auto* label = dynamic_cast<juce::Label*> (ui->findChildWithID ("value/0")))
             label->setText ("2 s", juce::sendNotificationSync);
 
         check (textOf (*p, Ids::filterCutoffId) == "800 Hz" && textOf (*p, Ids::stretchFactorId) == "x16.0" && textOf (*p, Ids::lengthTimeId) == "2.00 s",
@@ -953,6 +956,8 @@ static void testEditor (const juce::File& outputDir)
     editor.reset();
 }
 
+#include "PresetTests.h"
+
 int main (int argc, char* argv[])
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -968,6 +973,8 @@ int main (int argc, char* argv[])
     testOutput();
     testParametersAndState();
     testEditor (argc > 1 ? juce::File::getCurrentWorkingDirectory().getChildFile (juce::String::fromUTF8 (argv[1])) : juce::File());
+    testPresetsAndWindowSize<PhibresAudioProcessor, PhibresAudioProcessorEditor, PhibresFacade> ({ "grab" },
+        argc > 1 ? juce::File::getCurrentWorkingDirectory().getChildFile (juce::String::fromUTF8 (argv[1])) : juce::File());
 
     std::cout << (failures == 0 ? "TOUS LES TESTS PASSENT" : juce::String (failures) + " ECHEC(S)") << std::endl;
     return failures == 0 ? 0 : 1;
